@@ -32,7 +32,7 @@ export default function AddToCartButton({
       title: productName,
       price: productPrice,
       image: productImage
-    }, quantity)
+    })
     
     // Show success feedback using toast
     showToast(
