@@ -1,12 +1,8 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // Enable static exports for Netlify
-  output: 'export', // CRITICAL for Netlify
-  images: {
-    unoptimized: true, // Required for static export
-  },
-  // If using App Router
-  trailingSlash: true, // Helps with routing
-}
+import type { NextConfig } from "next";
 
-module.exports = nextConfig
+const nextConfig: NextConfig = {
+  /* config options here */
+  reactCompiler: true,
+};
+
+export default nextConfig;
