@@ -111,8 +111,8 @@ export default function CheckoutPage() {
     <div className="max-w-6xl mx-auto px-4">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Checkout</h1>
-        <p className="text-gray-600">Complete your purchase in just a few steps</p>
+        <h1 className="text-3xl font-bold text-gray-200 mb-2">Checkout</h1>
+        <p className="text-gray-200">Complete your purchase in just a few steps</p>
       </div>
 
       {/* Progress Steps */}
