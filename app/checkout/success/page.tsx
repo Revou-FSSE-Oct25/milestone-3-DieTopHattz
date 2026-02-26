@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle, Package, Truck, Home, ShoppingBag, Download, Share2, Clock } from 'lucide-react'
+import { useAuth } from '@/app/providers/AuthProvider'
+import { useCartStore } from '@/app/store/cartStore'
+import { CheckCircle, Package, Truck, Home, ShoppingBag, Download, Share2, Clock, User } from 'lucide-react'
 
 export default function CheckoutSuccessPage() {
+  const { user } = useAuth()
+  const { clearCart } = useCartStore()
   const [orderNumber, setOrderNumber] = useState('')
   const [estimatedDelivery, setEstimatedDelivery] = useState('')
   
@@ -16,7 +20,7 @@ export default function CheckoutSuccessPage() {
     // Calculate delivery date (3-5 business days from now)
     const today = new Date()
     const deliveryDate = new Date(today)
-    deliveryDate.setDate(today.getDate() + 4) // 4 days from now (approx 3-5 business days)
+    deliveryDate.setDate(today.getDate() + 4)
     
     const options: Intl.DateTimeFormatOptions = { 
       weekday: 'long', 
@@ -25,9 +29,12 @@ export default function CheckoutSuccessPage() {
     }
     setEstimatedDelivery(deliveryDate.toLocaleDateString('en-US', options))
     
-    // Clear cart items from localStorage
-    localStorage.removeItem('cart-items')
-  }, [])
+    // Clear cart using Zustand store
+    clearCart()
+    
+    // Also clear localStorage cart items (backup)
+    localStorage.removeItem('cart-storage')
+  }, [clearCart])
 
   const handlePrintReceipt = () => {
     window.print()
@@ -53,10 +60,15 @@ export default function CheckoutSuccessPage() {
         <div className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center animate-pulse">
           <CheckCircle className="h-12 w-12 text-green-500" />
         </div>
-        <h1 className="text-4xl font-bold text-gray-200 mb-3">Order Confirmed!</h1>
-        <p className="text-lg text-gray-200 max-w-2xl mx-auto">
-          Thank you for your purchase. Your order has been successfully placed and is being processed.
+        <h1 className="text-4xl font-bold text-gray-100 mb-3">Order Confirmed!</h1>
+        <p className="text-lg text-gray-100 max-w-2xl mx-auto">
+          Thank you for your purchase{user?.name ? `, ${user.name}` : ''}. Your order has been successfully placed and is being processed.
         </p>
+        {user && (
+          <p className="text-sm text-gray-100 mt-2">
+            A confirmation email has been sent to {user.email}
+          </p>
+        )}
       </div>
 
       {/* Order Details Card */}
@@ -74,6 +86,26 @@ export default function CheckoutSuccessPage() {
           </div>
         </div>
 
+        {/* Customer Info - NEW */}
+        {user && (
+          <div className="mb-6 pb-6 border-b">
+            <h3 className="text-lg font-semibold text-[#2c3e50] mb-3 flex items-center gap-2">
+              <User className="h-5 w-5 text-[#e74c3c]" />
+              Customer Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Name</p>
+                <p className="font-medium text-[#2c3e50]">{user.name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="font-medium text-[#2c3e50]">{user.email}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Order Status Timeline */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-[#2c3e50] mb-6">Order Status</h3>
@@ -84,19 +116,23 @@ export default function CheckoutSuccessPage() {
               { icon: <Truck className="h-6 w-6" />, title: 'Shipped', status: 'Pending', time: estimatedDelivery, color: 'text-orange-500', bg: 'bg-orange-100' },
               { icon: <CheckCircle className="h-6 w-6" />, title: 'Delivered', status: 'Pending', time: 'Estimated', color: 'text-gray-400', bg: 'bg-gray-100' },
             ].map((step, index) => (
-              <div key={step.title} className="flex items-center md:block text-center md:text-left">
+              <div key={step.title} className="flex items-center md:block text-center md:text-left relative">
                 <div className={`${step.bg} ${step.color} w-12 h-12 rounded-full flex items-center justify-center mr-4 md:mx-auto md:mb-3`}>
                   {step.icon}
                 </div>
                 <div>
                   <h4 className="font-semibold text-[#2c3e50]">{step.title}</h4>
-                  <p className={`text-sm font-medium ${step.status === 'Completed' ? 'text-green-600' : step.status === 'In Progress' ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <p className={`text-sm font-medium ${
+                    step.status === 'Completed' ? 'text-green-600' : 
+                    step.status === 'In Progress' ? 'text-blue-600' : 
+                    'text-gray-500'
+                  }`}>
                     {step.status}
                   </p>
                   <p className="text-xs text-gray-500">{step.time}</p>
                 </div>
                 {index < 3 && (
-                  <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2 w-16 h-0.5 bg-gray-200 mt-6"></div>
+                  <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2 w-16 h-0.5 bg-gray-200 top-6"></div>
                 )}
               </div>
             ))}
@@ -132,8 +168,7 @@ export default function CheckoutSuccessPage() {
                 <h4 className="font-medium text-[#2c3e50]">Order Confirmation</h4>
               </div>
               <p className="text-sm text-gray-600">
-                Check your email for order confirmation and receipt. 
-                Spam folder too.
+                Check your email for order confirmation and receipt. Check spam folder too.
               </p>
             </div>
             
@@ -153,7 +188,7 @@ export default function CheckoutSuccessPage() {
       </div>
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-1 py-4 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Link
           href="/"
           className="bg-[#e74c3c] text-white py-4 rounded-lg font-semibold hover:bg-[#c0392b] transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
@@ -163,7 +198,7 @@ export default function CheckoutSuccessPage() {
         </Link>
         
         <Link
-          href="/"
+          href="/products"
           className="bg-white border-2 border-[#2c3e50] text-[#2c3e50] py-4 rounded-lg font-semibold hover:bg-[#2c3e50] hover:text-white transition-colors flex items-center justify-center gap-2"
         >
           <ShoppingBag className="h-5 w-5" />
@@ -196,7 +231,7 @@ export default function CheckoutSuccessPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="mailto:support@revoshop.com"
+              href={`mailto:support@revoshop.com?subject=Order%20${orderNumber}`}
               className="bg-white text-[#2c3e50] py-3 px-6 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
               Email Support

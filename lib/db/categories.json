@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "men's clothing",
+    "slug": "mens-clothing",
+    "count": 15
+  },
+  {
+    "id": 2,
+    "name": "women's clothing",
+    "slug": "womens-clothing",
+    "count": 12
+  },
+  {
+    "id": 3,
+    "name": "jewelery",
+    "slug": "jewelery",
+    "count": 8
+  },
+  {
+    "id": 4,
+    "name": "electronics",
+    "slug": "electronics",
+    "count": 10
+  }
+]

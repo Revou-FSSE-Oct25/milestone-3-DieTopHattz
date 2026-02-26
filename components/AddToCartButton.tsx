@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
-import { useCart } from '@/app/providers/CartProvider'
+import { useCartStore } from '@/app/store/cartStore'
 import { useToast } from '@/app/providers/ToastProvider'
 
 interface AddToCartButtonProps {
@@ -20,23 +20,23 @@ export default function AddToCartButton({
 }: AddToCartButtonProps) {
   const [quantity, setQuantity] = useState(1)
   const [isAdding, setIsAdding] = useState(false)
-  const { addToCart } = useCart()
+  const addItem = useCartStore((state) => state.addItem)
   const { showToast } = useToast()
 
   const handleAddToCart = async () => {
     setIsAdding(true)
     
     // Add all items at once with quantity
-    addToCart({
+    addItem({
       id: productId,
       title: productName,
       price: productPrice,
       image: productImage
-    })
+    }, quantity)
     
     // Show success feedback using toast
     showToast(
-      `Added ${quantity} ${productName}${quantity > 1 ? '(s)' : ''} to cart!`,
+      `Added ${quantity} ${productName}${quantity > 1 ? 's' : ''} to cart!`,
       'success'
     )
     
@@ -48,21 +48,21 @@ export default function AddToCartButton({
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-4">
-        <label className="font-medium text-gray-200">Quantity:</label>
+        <label className="font-medium text-[#2c3e50]">Quantity:</label>
         <div className="flex items-center border border-[#bdc3c7] rounded-lg">
           <button
             onClick={() => setQuantity(q => Math.max(1, q - 1))}
-            className="px-3 py-2 hover:bg-gray-100 rounded-l-lg transition-colors text-gray-200"
+            className="px-3 py-2 hover:bg-gray-100 rounded-l-lg transition-colors"
             disabled={isAdding}
           >
             -
           </button>
-          <span className="px-4 py-2 min-w-[3rem] text-center border-x border-[#bdc3c7] text-gray-200">
+          <span className="px-4 py-2 min-w-[3rem] text-center border-x border-[#bdc3c7]">
             {quantity}
           </span>
           <button
             onClick={() => setQuantity(q => q + 1)}
-            className="px-3 py-2 hover:bg-gray-100 rounded-r-lg transition-colors text-gray-200"
+            className="px-3 py-2 hover:bg-gray-100 rounded-r-lg transition-colors"
             disabled={isAdding}
           >
             +

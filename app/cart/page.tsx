@@ -1,29 +1,32 @@
 'use client'
 
-import { useCart } from '@/app/providers/CartProvider'
-import { Trash2, Plus, Minus, ShoppingCart, ArrowLeft, Package, Truck, Shield, RefreshCw } from 'lucide-react'
+import { useAuth } from '@/app/providers/AuthProvider'
+import { useCartStore } from '@/app/store/cartStore'
+import { Trash2, Plus, Minus, ShoppingCart, ArrowLeft, Package, Truck, Shield, RefreshCw, User } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
 export default function CartPage() {
-  const { items, totalItems, removeFromCart, updateQuantity, clearCart } = useCart()
-  const [isCheckingOut, setIsCheckingOut] = useState(false)
+  const { isAuthenticated, user } = useAuth()
+  const { 
+    items, 
+    removeItem, 
+    updateQuantity, 
+    clearCart,
+    getTotalItems,
+    getSubtotal,
+    getShipping,
+    getTax,
+    getTotal
+  } = useCartStore()
+  
+  const [promoCode, setPromoCode] = useState('')
 
-  const calculateSubtotal = () => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0)
-  }
-
-  const calculateShipping = () => {
-    return calculateSubtotal() > 50 ? 0 : 5.99
-  }
-
-  const calculateTax = () => {
-    return calculateSubtotal() * 0.08
-  }
-
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping() + calculateTax()
-  }
+  const totalItems = getTotalItems()
+  const subtotal = getSubtotal()
+  const shipping = getShipping()
+  const tax = getTax()
+  const total = getTotal()
 
   if (items.length === 0) {
     return (
@@ -31,30 +34,35 @@ export default function CartPage() {
         <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
           <ShoppingCart className="h-12 w-12 text-gray-400" />
         </div>
-        <h1 className="text-3xl font-bold text-gray-200 mb-4">Your cart is empty</h1>
-        <p className="text-gray-200 mb-8">Looks like you haven't added any items to your cart yet.</p>
+        <h1 className="text-3xl font-bold text-gray-100 mb-4">Your cart is empty</h1>
+        <p className="text-gray-100 mb-8">Looks like you haven't added any items to your cart yet.</p>
 
         <Link 
-        href="/"
-        className="bg-[#e74c3c] text-white py-2 px-6 rounded-lg font-semibold hover:bg-[#c0392b] transition-colors flex items-center justify-center gap-2 w-50 mx-auto"
+          href="/"
+          className="bg-[#e74c3c] text-white py-2 px-6 rounded-lg font-semibold hover:bg-[#c0392b] transition-colors flex items-center justify-center gap-2 w-50 mx-auto"
         >
-        <ArrowLeft className="h-4 w-4" />
-        Continue Shopping
+          <ArrowLeft className="h-4 w-4" />
+          Continue Shopping
         </Link>
-            </div>
-            )
-        }
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4">
-        <div className='flex flex-col flex-start gap-1'>
-            <h1 className="text-3xl font-bold text-gray-200 mb-2">Shopping Cart</h1>
-            <p className="text-gray-200 mb-2">Review your items and proceed to checkout</p>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className='flex flex-col flex-start gap-1 mb-6'>
+        <h1 className="text-3xl font-bold text-gray-100 mb-2">Shopping Cart</h1>
+        <p className="text-gray-100">Review your items and proceed to checkout</p>
+        {user && (
+          <p className="text-sm text-green-600 mt-1">
+            ✓ Logged in as {user.name}
+          </p>
+        )}
+      </div>
       
-      <div className="grid grid-rows-2 gap-8">
-        {/* Cart Items */}
-          <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Cart Items - Takes 2/3 width */}
+        <div className="lg:col-span-2">
           <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-[#2c3e50]">
@@ -72,13 +80,12 @@ export default function CartPage() {
             <div className="space-y-4">
               {items.map((item) => (
                 <div key={item.id} className="flex flex-row sm:flex-row items-start sm:items-center gap-4 border-b pb-4 last:border-0 group">
-                  {/* Image Container - Fixed size */}
+                  {/* Image Container */}
                   <div className="w-full sm:w-28 h-28 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                     <img
                       src={item.image}
                       alt={item.title}
                       className="h-full w-full object-contain p-3 group-hover:scale-110 transition-transform duration-300"
-                      style={{ maxWidth: '55%', maxHeight: '55%' }}
                     />
                   </div>
                   
@@ -144,7 +151,7 @@ export default function CartPage() {
                             ${(item.price * item.quantity).toFixed(2)}
                           </p>
                           <button 
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => removeItem(item.id)}
                             className="text-red-500 hover:text-red-700 text-sm mt-1 flex items-center gap-1 hover:scale-105 transition-transform"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -156,7 +163,7 @@ export default function CartPage() {
                     
                     {/* Mobile remove button */}
                     <button 
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeItem(item.id)}
                       className="mt-3 sm:hidden text-red-500 hover:text-red-700 text-sm flex items-center gap-1"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -167,44 +174,50 @@ export default function CartPage() {
               ))}
             </div>
           </div>
-        </div>       
+        </div>
 
-
-
-        {/* Order Summary */}
+        {/* Order Summary - Takes 1/3 width */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 sticky">
+          <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 sticky top-24">
             <h2 className="text-xl font-semibold text-[#2c3e50] mb-4">Order Summary</h2>
+            
+            {/* User Info - if logged in */}
+            {user && (
+              <div className="mb-4 p-3 bg-green-50 rounded-lg flex items-center gap-2">
+                <User className="h-4 w-4 text-green-600" />
+                <span className="text-sm text-gray-700">{user.name}</span>
+              </div>
+            )}
             
             <div className="space-y-3 mb-4">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal</span>
-                <span className="font-medium">${calculateSubtotal().toFixed(2)}</span>
+                <span className="font-medium">${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Shipping</span>
                 <span className="font-medium">
-                  {calculateShipping() === 0 ? (
+                  {shipping === 0 ? (
                     <span className="text-green-600">Free</span>
                   ) : (
-                    `$${calculateShipping().toFixed(2)}`
+                    `$${shipping.toFixed(2)}`
                   )}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Tax (8%)</span>
                 <span className="font-medium">
-                  ${calculateTax().toFixed(2)}
+                  ${tax.toFixed(2)}
                 </span>
               </div>
               <div className="border-t pt-3">
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
                   <span className="text-[#e74c3c]">
-                    ${calculateTotal().toFixed(2)}
+                    ${total.toFixed(2)}
                   </span>
                 </div>
-                {calculateShipping() === 0 && (
+                {shipping === 0 && (
                   <p className="text-sm text-green-600 mt-1 text-right">
                     🎉 You saved $5.99 on shipping!
                   </p>
@@ -220,6 +233,8 @@ export default function CartPage() {
               <div className="flex">
                 <input
                   type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
                   placeholder="Enter code"
                   className="flex-grow border border-gray-300 rounded-l-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
                 />
@@ -229,21 +244,21 @@ export default function CartPage() {
               </div>
             </div>
 
-            <div className = "flex flex-col gap-2">
-            <Link
-              href="/checkout"
-              className="w-full bg-[#e74c3c] text-white py-3 rounded-lg font-semibold hover:bg-[#c0392b] transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-            >
-              Proceed to Checkout
-            </Link>
-            
-            <Link 
-              href="/"
-              className="w-full bg-white border border-[#2c3e50] text-[#2c3e50] py-2 rounded-lg font-medium hover:bg-[#2c3e50] hover:text-white transition-colors flex items-center justify-center gap-2 text-sm"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Continue Shopping
-            </Link>
+            <div className="flex flex-col gap-2">
+              <Link
+                href={isAuthenticated ? "/checkout" : "/login?redirect=/checkout"}
+                className="w-full bg-[#e74c3c] text-white py-3 rounded-lg font-semibold hover:bg-[#c0392b] transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              >
+                {isAuthenticated ? 'Proceed to Checkout' : 'Login to Checkout'}
+              </Link>
+              
+              <Link 
+                href="/"
+                className="w-full bg-white border border-[#2c3e50] text-[#2c3e50] py-2 rounded-lg font-medium hover:bg-[#2c3e50] hover:text-white transition-colors flex items-center justify-center gap-2 text-sm"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Continue Shopping
+              </Link>
             </div>
           </div>
         </div>

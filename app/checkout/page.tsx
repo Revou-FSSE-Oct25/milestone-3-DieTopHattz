@@ -1,19 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { useCart } from '@/app/providers/CartProvider'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/app/providers/AuthProvider'
+import { useCartStore } from '@/app/store/cartStore'
 import { useToast } from '@/app/providers/ToastProvider'
-import { CreditCard, Package, Truck, ShieldCheck, ArrowLeft, CheckCircle, Clock, Wallet, MapPin } from 'lucide-react'
+import { CreditCard, Package, Truck, ShieldCheck, ArrowLeft, CheckCircle, Clock, Wallet, MapPin, User, Mail, Phone, MapPinned } from 'lucide-react'
 import { FaCcVisa, FaCcMastercard, FaCcPaypal, FaCcAmex, FaCcApplePay } from 'react-icons/fa'
 import Link from 'next/link'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, clearCart } = useCart()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const { items, clearCart, getTotalItems, getSubtotal, getShipping, getTax, getTotal } = useCartStore()
   const { showToast } = useToast()
   const [isProcessing, setIsProcessing] = useState(false)
   const [step, setStep] = useState(1)
+  const [isClient, setIsClient] = useState(false)
   
   // Form states
   const [formData, setFormData] = useState({
@@ -32,21 +35,35 @@ export default function CheckoutPage() {
     saveInfo: false
   })
 
-  const calculateSubtotal = () => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0)
-  }
+  // Set isClient to true when component mounts
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
-  const calculateShipping = () => {
-    return calculateSubtotal() > 50 ? 0 : 5.99
-  }
+  // Pre-fill form with user data if available
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        email: user.email || '',
+        firstName: user.name?.split(' ')[0] || '',
+        lastName: user.name?.split(' ')[1] || '',
+      }))
+    }
+  }, [user])
 
-  const calculateTax = () => {
-    return calculateSubtotal() * 0.08
-  }
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isClient && !authLoading && !isAuthenticated) {
+      router.push('/login?redirect=/checkout')
+    }
+  }, [isClient, authLoading, isAuthenticated, router])
 
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping() + calculateTax()
-  }
+  const calculateSubtotal = () => getSubtotal()
+  const calculateShipping = () => getShipping()
+  const calculateTax = () => getTax()
+  const calculateTotal = () => getTotal()
+  const totalItems = getTotalItems()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -59,6 +76,20 @@ export default function CheckoutPage() {
   }
 
   const handleNextStep = () => {
+    // Validate step 1 before proceeding
+    if (step === 1) {
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.address || !formData.city || !formData.zipCode || !formData.phone) {
+        showToast('Please fill in all required fields', 'error')
+        return
+      }
+    }
+    // Validate step 2 before proceeding
+    if (step === 2) {
+      if (!formData.cardNumber || !formData.cardName || !formData.expiryDate || !formData.cvv) {
+        showToast('Please fill in all payment details', 'error')
+        return
+      }
+    }
     if (step < 3) {
       setStep(step + 1)
     }
@@ -80,11 +111,40 @@ export default function CheckoutPage() {
     // Show success
     showToast('Order placed successfully! Thank you for your purchase.', 'success')
     
-    // Clear cart
+    // Clear cart using Zustand
     clearCart()
     
     // Redirect to confirmation
     router.push('/checkout/success')
+  }
+
+  // Show loading state while checking auth
+  if (!isClient || authLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e74c3c] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading checkout...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If not authenticated, show message (should redirect)
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Please log in to continue with checkout.</p>
+          <Link 
+            href="/login?redirect=/checkout"
+            className="bg-[#e74c3c] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#c0392b] transition-colors"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   if (items.length === 0) {
@@ -93,49 +153,54 @@ export default function CheckoutPage() {
         <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
           <Package className="h-12 w-12 text-gray-400" />
         </div>
-        <h1 className="text-3xl font-bold text-gray-200 mb-4">Your cart is empty</h1>
-        <p className="text-gray-200 mb-8">Looks like you haven't added any items to your cart yet.</p>
+        <h1 className="text-3xl font-bold text-gray-100 mb-4">Your cart is empty</h1>
+        <p className="text-gray-100 mb-8">Looks like you haven't added any items to your cart yet.</p>
 
         <Link 
-        href="/"
-        className="bg-[#e74c3c] text-white py-2 px-6 rounded-lg font-semibold hover:bg-[#c0392b] transition-colors flex items-center justify-center gap-2 w-50 mx-auto"
+          href="/"
+          className="bg-[#e74c3c] text-white py-2 px-6 rounded-lg font-semibold hover:bg-[#c0392b] transition-colors flex items-center justify-center gap-2 w-50 mx-auto"
         >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Shopping
+          <ArrowLeft className="h-4 w-4" />
+          Back to Shopping
         </Link>
-            </div>
-            )
+      </div>
+    )
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4">
+    <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-200 mb-2">Checkout</h1>
-        <p className="text-gray-200">Complete your purchase in just a few steps</p>
+        <h1 className="text-3xl font-bold text-gray-100 mb-2">Checkout</h1>
+        <p className="text-gray-100">Complete your purchase in just a few steps</p>
+        {user && (
+          <p className="text-sm text-green-600 mt-2">
+            ✓ Logged in as {user.name} ({user.email})
+          </p>
+        )}
       </div>
 
       {/* Progress Steps */}
       <div className="mb-8">
-        <div className="flex items-center justify-between py-4">
+        <div className="flex items-center justify-between">
           {['Shipping', 'Payment', 'Review'].map((title, index) => (
-            <div key={title} className="flex items-center mb-4 md:mb-0">
+            <div key={title} className="flex items-center flex-1">
               <div className={`
-                w-12 h-12 rounded-full flex items-center justify-center
+                w-10 h-10 rounded-full flex items-center justify-center
                 ${step > index + 1 ? 'bg-green-500 text-white' : 
                   step === index + 1 ? 'bg-[#e74c3c] text-white' : 
-                  'bg-gray-200 text-gray-200'}
-                font-semibold text-lg
+                  'bg-gray-200 text-gray-600'}
+                font-semibold
               `}>
-                {step > index + 1 ? <CheckCircle className="h-6 w-6" /> : index + 1}
+                {step > index + 1 ? <CheckCircle className="h-5 w-5" /> : index + 1}
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-200">Step {index + 1}</p>
-                <p className="font-semibold text-lg text-gray-200">{title}</p>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-gray-100">Step {index + 1}</p>
+                <p className="font-semibold text-gray-100">{title}</p>
               </div>
               {index < 2 && (
                 <div className={`
-                  hidden md:block w-24 h-1 mx-8
+                  flex-1 h-1 mx-4
                   ${step > index + 1 ? 'bg-green-500' : 'bg-gray-200'}
                 `} />
               )}
@@ -144,14 +209,15 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <div className="grid grid-rows-2 gap-8">
+      <div className="grid grid-rows-1 gap-8">
         {/* Checkout Form */}
-        <div className="lg:col-span-1">
+        <div>
           <form onSubmit={handleSubmitOrder} className="bg-white rounded-xl shadow-lg p-6">
             {/* Step 1: Shipping Information */}
             {step === 1 && (
               <div>
-                <h2 className="text-xl font-semibold text-[#2c3e50] mb-6">
+                <h2 className="text-xl font-semibold text-[#2c3e50] mb-6 flex items-center gap-2">
+                  <MapPinned className="h-5 w-5 text-[#e74c3c]" />
                   Shipping Information
                 </h2>
                 
@@ -161,15 +227,18 @@ export default function CheckoutPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         First Name *
                       </label>
-                      <input
-                        type="text"
-                        name="firstName"
-                        required
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
-                        placeholder="John"
-                      />
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                          type="text"
+                          name="firstName"
+                          required
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
+                          placeholder="John"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -191,15 +260,18 @@ export default function CheckoutPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Email Address *
                     </label>
-                    <input
-                      type="email"
-                      name="email"
-                      required
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
-                      placeholder="john@example.com"
-                    />
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="email"
+                        name="email"
+                        required
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
+                        placeholder="john@example.com"
+                      />
+                    </div>
                   </div>
                   
                   <div>
@@ -269,15 +341,18 @@ export default function CheckoutPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Phone Number *
                     </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      required
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
-                      placeholder="+1 (555) 123-4567"
-                    />
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="tel"
+                        name="phone"
+                        required
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
                   </div>
                   
                   <div className="flex items-center">
@@ -308,16 +383,19 @@ export default function CheckoutPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Card Number *
                     </label>
-                    <input
-                      type="text"
-                      name="cardNumber"
-                      required
-                      value={formData.cardNumber}
-                      onChange={handleInputChange}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                    />
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        name="cardNumber"
+                        required
+                        value={formData.cardNumber}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#e74c3c] focus:border-transparent"
+                        placeholder="1234 5678 9012 3456"
+                        maxLength={19}
+                      />
+                    </div>
                   </div>
                   
                   <div>
@@ -403,7 +481,7 @@ export default function CheckoutPage() {
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="font-semibold text-[#2c3e50] mb-4 flex items-center gap-2">
                       <Package className="h-5 w-5 text-[#e74c3c]" />
-                      Order Summary
+                      Order Summary ({totalItems} items)
                     </h3>
                     <div className="space-y-3">
                       {items.map((item) => (
@@ -541,17 +619,6 @@ export default function CheckoutPage() {
                           I understand that digital products are non-refundable once downloaded
                         </label>
                       </div>
-                      <div className="flex items-start">
-                        <input
-                          type="checkbox"
-                          id="communication"
-                          required
-                          className="h-4 w-4 text-[#e74c3c] rounded mt-1 flex-shrink-0"
-                        />
-                        <label htmlFor="communication" className="ml-2 text-sm text-gray-700">
-                          I agree to receive order updates and promotional communications via email
-                        </label>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -674,6 +741,18 @@ export default function CheckoutPage() {
               </div>
             </div>
             
+            {/* User Info */}
+            {user && (
+              <div className="mb-6 p-4 bg-green-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <User className="h-5 w-5 text-green-600" />
+                  <h4 className="font-medium text-[#2c3e50]">Logged in as</h4>
+                </div>
+                <p className="text-sm text-gray-700">{user.name}</p>
+                <p className="text-sm text-gray-500">{user.email}</p>
+              </div>
+            )}
+            
             {/* Shipping Info */}
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
@@ -687,20 +766,6 @@ export default function CheckoutPage() {
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 Estimated delivery: 3-5 business days
-              </p>
-            </div>
-            
-            {/* Current Step Help */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-[#2c3e50] mb-2">Current Step: {
-                step === 1 ? 'Shipping Information' :
-                step === 2 ? 'Payment Details' :
-                'Review Order'
-              }</h4>
-              <p className="text-sm text-gray-600">
-                {step === 1 ? 'Enter your shipping details to proceed' :
-                 step === 2 ? 'Enter your payment information securely' :
-                 'Review your order before placing it'}
               </p>
             </div>
             

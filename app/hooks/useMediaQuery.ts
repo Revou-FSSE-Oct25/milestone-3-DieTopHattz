@@ -1,0 +1,30 @@
+import { useState, useEffect } from 'react'
+
+/**
+ * Hook that checks if a media query matches
+ * @param query - Media query string
+ * @returns Boolean indicating if query matches
+ */
+export function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    
+    if (media.matches !== matches) {
+      setMatches(media.matches)
+    }
+
+    const listener = (event: MediaQueryListEvent) => {
+      setMatches(event.matches)
+    }
+
+    media.addEventListener('change', listener)
+    
+    return () => {
+      media.removeEventListener('change', listener)
+    }
+  }, [matches, query])
+
+  return matches
+}

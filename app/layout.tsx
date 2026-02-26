@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { CartProvider } from '@/app/providers/CartProvider'
 import { ToastProvider } from '@/app/providers/ToastProvider'
+import { AuthProvider } from '@/app/providers/AuthProvider'
 
 export const metadata: Metadata = {
   title: 'RevoShop - Your Favorite Online Store',
@@ -19,13 +19,14 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className="min-h-screen flex flex-col bg-background text-foreground">
         <ToastProvider>
-          <CartProvider>
+          <AuthProvider>
+            {/* CartProvider is removed - now using Zustand directly */}
             <Header />
             <main className="flex-grow container mx-auto px-4 py-8 relative">
               {children}
             </main>
             <Footer />
-          </CartProvider>
+          </AuthProvider>
         </ToastProvider>
       </body>
     </html>

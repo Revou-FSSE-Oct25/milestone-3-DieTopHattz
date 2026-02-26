@@ -1,32 +1,60 @@
 revoshop/
 ├── app/
+
 │ ├── layout.tsx # Root layout with providers
+
 │ ├── page.tsx # Home page (Product listing)
+
 │ ├── products/
+
 │ │ └── [id]/
+
 │ │ └── page.tsx # Product detail pages (SSR)
+
 │ ├── cart/
+
 │ │ └── page.tsx # Shopping cart page
+
 │ ├── checkout/
+
 │ │ ├── page.tsx # Checkout process
+
 │ │ └── success/
+
 │ │ └── page.tsx # Order success page
+
 │ ├── about/
+
 │ │ └── page.tsx # About page (SSG)
+
 │ ├── faq/
+
 │ │ └── page.tsx # FAQ page (SSG)
+
 │ ├── providers/
+
 │ │ ├── CartProvider.tsx # Global cart state management
+
 │ │ └── ToastProvider.tsx # Notification system
+
 │ └── globals.css # Global styles
+
 ├── components/
+
 │ ├── Header.tsx # Navigation header
+
 │ ├── Footer.tsx # Site footer
+
 │ ├── ProductCard.tsx # Product listing card
+
 │ └── AddToCartButton.tsx # Add to cart component
+
 ├── lib/
+
 │ └── api.ts # API utility functions
+
 ├── public/ # Static assets
+
 └── package.json
 
 text
